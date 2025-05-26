@@ -1,4 +1,4 @@
 package com.strathmore.grocery.repositories;
 
-public class OrderRepository {
+  public class OrderRepository {
 }
