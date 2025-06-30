@@ -1,9 +1,15 @@
 package com.strathmore.grocery.services;
 
+import com.strathmore.grocery.repositories.CartItemRepository;
+import org.springframework.beans.factory.annotation.*;
+import org.springframework.boot.autoconfigure.data.web.*;
+import org.springframework.data.domain.*;
+import org.springframework.stereotype.*;
+
 @Service
-public class CartitemService {
+public class CartitemService<Cartitem> {
     @Autowired
-    private CartitemRepository cartitemRepository;
+    private CartItemRepository CartitemRepository;
 
     public Cartitem createCartitem(Cartitem cartitem) {
         return cartitemRepository.save(cartitem);
@@ -28,7 +34,7 @@ public class CartitemService {
     }
 
     public Page<Cartitem> searchCartitems(String name, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        SpringDataWebProperties.Pageable pageable = PageRequest.of(page, size);
         return cartitemRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 

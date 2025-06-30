@@ -1,6 +1,10 @@
 package com.strathmore.grocery.models;
 
-  @Entity
+import jakarta.persistence.*;
+
+import java.time.LocalDate;
+
+@Entity
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
