@@ -17,7 +17,7 @@ public class HomeController {
     public HomeController(ProductService productService) {
         this.productService = productService;
     }
-    
+
     @GetMapping("/")
     public String home(Model model) {
         List<String> categories = productService.getAllCategories();
@@ -34,4 +34,6 @@ public class HomeController {
     public String contact() {
         return "contact";
     }
+
+
 } 

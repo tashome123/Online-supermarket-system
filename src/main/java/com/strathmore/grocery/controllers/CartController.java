@@ -49,7 +49,7 @@ public class CartController {
     @PostMapping("/update/{cartItemId}")
     @ResponseBody
     public String updateQuantity(@PathVariable Long cartItemId, 
-                                @RequestParam Integer quantity) {
+                               @RequestParam Integer quantity) {
         try {
             cartService.updateCartItemQuantity(cartItemId, quantity);
             return "Cart updated successfully!";
