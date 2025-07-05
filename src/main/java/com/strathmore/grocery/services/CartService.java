@@ -1,44 +1,86 @@
 package com.strathmore.grocery.services;
 
+import com.strathmore.grocery.models.CartItem;
+import com.strathmore.grocery.models.Product;
+import com.strathmore.grocery.models.User;
 import com.strathmore.grocery.repositories.CartItemRepository;
-import org.springframework.beans.factory.annotation.*;
-import org.springframework.boot.autoconfigure.data.web.*;
-import org.springframework.data.domain.*;
-import org.springframework.stereotype.*;
+import com.strathmore.grocery.repositories.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 
 @Service
-public class CartitemService<Cartitem> {
+public class CartService {
+    
+    private final CartItemRepository cartItemRepository;
+    private final ProductRepository productRepository;
+    
     @Autowired
-    private CartItemRepository CartitemRepository;
-
-    public Cartitem createCartitem(Cartitem cartitem) {
-        return cartitemRepository.save(cartitem);
+    public CartService(CartItemRepository cartItemRepository, ProductRepository productRepository) {
+        this.cartItemRepository = cartItemRepository;
+        this.productRepository = productRepository;
     }
-
-    public Cartitem getCartitemById(Long id) {
-        return cartitemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cartitem not found"));
+    
+    public List<CartItem> getUserCart(User user) {
+        return cartItemRepository.findByUser(user);
     }
-
-    public Cartitem updateCartitem(Long id, Cartitem updatedCartitem) {
-        Cartitem cartitem = getCartitemById(id);
-        cartitem.setName(updatedCartitem.getName());
-        cartitem.setDescription(updatedCartitem.getDescription());
-        cartitem.setPrice(updatedCartitem.getPrice());
-        cartitem.setCategory(updatedCartitem.getCategory());
-        return cartitemRepository.save(cartitem);
+    
+    public CartItem addToCart(User user, Long productId, Integer quantity) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        if (!productOpt.isPresent()) {
+            throw new RuntimeException("Product not found");
+        }
+        
+        Product product = productOpt.get();
+        if (product.getStockQuantity() < quantity) {
+            throw new RuntimeException("Insufficient stock");
+        }
+        
+        Optional<CartItem> existingItem = cartItemRepository.findByUserAndProductId(user, productId);
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            item.setQuantity(item.getQuantity() + quantity);
+            return cartItemRepository.save(item);
+        } else {
+            CartItem newItem = new CartItem();
+            newItem.setUser(user);
+            newItem.setProduct(product);
+            newItem.setQuantity(quantity);
+            newItem.setUnitPrice(product.getPrice());
+            return cartItemRepository.save(newItem);
+        }
     }
-
-    public void deleteCartitem(Long id) {
-        cartitemRepository.deleteById(id);
+    
+    public CartItem updateCartItemQuantity(Long cartItemId, Integer quantity) {
+        Optional<CartItem> cartItemOpt = cartItemRepository.findById(cartItemId);
+        if (!cartItemOpt.isPresent()) {
+            throw new RuntimeException("Cart item not found");
+        }
+        
+        CartItem cartItem = cartItemOpt.get();
+        if (cartItem.getProduct().getStockQuantity() < quantity) {
+            throw new RuntimeException("Insufficient stock");
+        }
+        
+        cartItem.setQuantity(quantity);
+        return cartItemRepository.save(cartItem);
     }
-
-    public Page<Cartitem> searchCartitems(String name, int page, int size) {
-        SpringDataWebProperties.Pageable pageable = PageRequest.of(page, size);
-        return cartitemRepository.findByNameContainingIgnoreCase(name, pageable);
+    
+    public void removeFromCart(Long cartItemId) {
+        cartItemRepository.deleteById(cartItemId);
     }
-
-    public Page<Cartitem> getAllCartitems(int page, int size) {
-        return cartitemRepository.findAll(PageRequest.of(page, size));
+    
+    public void clearCart(User user) {
+        cartItemRepository.deleteByUser(user);
+    }
+    
+    public BigDecimal getCartTotal(User user) {
+        List<CartItem> cartItems = getUserCart(user);
+        return cartItems.stream()
+                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }
