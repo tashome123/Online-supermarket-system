@@ -216,13 +216,3 @@ The application automatically creates sample data on first run:
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions, please contact:
-- Email: info@onlinesupermarket.com
-- Phone: +254 700 000 000 
