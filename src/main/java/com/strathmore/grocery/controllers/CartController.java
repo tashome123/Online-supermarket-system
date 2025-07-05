@@ -1,51 +1,82 @@
 package com.strathmore.grocery.controllers;
 
-import org.springframework.web.bind.annotation.PostMapping;
+import com.strathmore.grocery.models.CartItem;
+import com.strathmore.grocery.models.User;
+import com.strathmore.grocery.services.CartService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.List;
+
+@Controller
+@RequestMapping("/cart")
 public class CartController {
-  @RestController
-@RequestMapping("/api/cartItem")
-public class CartitemController {
+
+    private final CartService cartService;
 
     @Autowired
-    private CartitemService cartitemService;
-
-    @PostMapping
-    public ResponseEntity<Cartitem> createCartitem(@RequestBody Cartitem cartitem) {
-        return new ResponseEntity<>(cartitemService.createCartitem(cartitem), HttpStatus.CREATED);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Cartitem> getCartitem(@PathVariable Long id) {
-        return ResponseEntity.ok(cartitemService.getCartitemById(id));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Cartitem> updateCartitem(@PathVariable Long id, @RequestBody Cartitem cartitem) {
-        return ResponseEntity.ok(cartitemService.updateCartitem(id, cartitem));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCartitiem(@PathVariable Long id) {
-        cartitemService.deleteCartitem(id);
-        return ResponseEntity.noContent().build();
+    public CartController(CartService cartService) {
+        this.cartService = cartService;
     }
 
     @GetMapping
-    public ResponseEntity<Page<Cartitem>> getAllCartitems(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return ResponseEntity.ok(cartItemService.getAllCartitems(page, size));
+    public String viewCart(@AuthenticationPrincipal User user, Model model) {
+        List<CartItem> cartItems = cartService.getUserCart(user);
+        BigDecimal total = cartService.getCartTotal(user);
+        
+        model.addAttribute("cartItems", cartItems);
+        model.addAttribute("total", total);
+        return "cart/view";
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<Page<Cartitems>> searchProducts(
-            @RequestParam String name,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return ResponseEntity.ok(productService.searchCartitems(name, page, size));
+    @PostMapping("/add/{productId}")
+    @ResponseBody
+    public String addToCart(@AuthenticationPrincipal User user, 
+                           @PathVariable Long productId, 
+                           @RequestParam(defaultValue = "1") Integer quantity) {
+        try {
+            cartService.addToCart(user, productId, quantity);
+            return "Product added to cart successfully!";
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
     }
-}
+
+    @PostMapping("/update/{cartItemId}")
+    @ResponseBody
+    public String updateQuantity(@PathVariable Long cartItemId, 
+                                @RequestParam Integer quantity) {
+        try {
+            cartService.updateCartItemQuantity(cartItemId, quantity);
+            return "Cart updated successfully!";
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/remove/{cartItemId}")
+    @ResponseBody
+    public String removeFromCart(@PathVariable Long cartItemId) {
+        try {
+            cartService.removeFromCart(cartItemId);
+            return "Item removed from cart successfully!";
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/clear")
+    @ResponseBody
+    public String clearCart(@AuthenticationPrincipal User user) {
+        try {
+            cartService.clearCart(user);
+            return "Cart cleared successfully!";
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
 }

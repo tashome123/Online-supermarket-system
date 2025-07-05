@@ -1,50 +1,68 @@
 package com.strathmore.grocery.controllers;
 
-import org.springframework.web.bind.annotation.PathVariable;
+import com.strathmore.grocery.models.Order;
+import com.strathmore.grocery.models.User;
+import com.strathmore.grocery.services.OrderService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
 
-@RestController
-@RequestMapping("/api/orders")
+import java.util.List;
+
+@Controller
+@RequestMapping("/orders")
 public class OrderController {
 
+    private final OrderService orderService;
+
     @Autowired
-    private OrderService orderService;
-
-    @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        return new ResponseEntity<>(orderService.createOrder(order), HttpStatus.CREATED);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.getOrderById(id));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Order> updateOrder(@PathVariable Long id, @RequestBody Order order) {
-        return ResponseEntity.ok(orderService.updateOrder(id, order));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
-        orderService.deleteOrder(id);
-        return ResponseEntity.noContent().build();
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
     }
 
     @GetMapping
-    public ResponseEntity<Page<Order>> getAllOrders(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return ResponseEntity.ok(orderService.getAllOrders(page, size));
+    public String getUserOrders(@AuthenticationPrincipal User user, Model model) {
+        List<Order> orders = orderService.getOrdersByUser(user);
+        model.addAttribute("orders", orders);
+        return "orders/list";
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<Page<Order>> searchOrders(
-            @RequestParam String customerName,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return ResponseEntity.ok(orderService.searchOrders(customerName, page, size));
+    @GetMapping("/{id}")
+    public String getOrderDetails(@PathVariable Long id, 
+                                 @AuthenticationPrincipal User user, 
+                                 Model model) {
+        Order order = orderService.getOrderById(id);
+        if (order != null && order.getUser().getId().equals(user.getId())) {
+            model.addAttribute("order", order);
+            return "orders/detail";
+        }
+        return "redirect:/orders";
+    }
+
+    @PostMapping("/create")
+    @ResponseBody
+    public String createOrder(@AuthenticationPrincipal User user, 
+                             @RequestParam String shippingAddress,
+                             @RequestParam String phoneNumber) {
+        try {
+            Order order = orderService.createOrder(user, shippingAddress, phoneNumber);
+            return "Order created successfully! Order ID: " + order.getId();
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/{id}/cancel")
+    @ResponseBody
+    public String cancelOrder(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        try {
+            orderService.cancelOrder(id, user);
+            return "Order cancelled successfully!";
+        } catch (RuntimeException e) {
+            return "Error: " + e.getMessage();
+        }
     }
 }
 
