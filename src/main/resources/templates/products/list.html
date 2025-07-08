@@ -146,7 +146,7 @@
                                 <p class="card-text text-muted" th:text="${product.description}">Product description</p>
                                 <span class="badge category-badge mb-2" th:text="${product.category}">Category</span>
                                 <div class="mt-auto">
-                                    <div class="price mb-2" th:text="${'$' + #numbers.formatDecimal(product.price, 1, 2)}">$0.00</div>
+                                    <div class="price mb-2" th:text="${'KSh' + #numbers.formatDecimal(product.price, 1, 2)}">$0.00</div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="text-muted" th:text="'Stock: ' + ${product.stockQuantity}">Stock: 0</small>
                                         <button class="btn btn-primary btn-sm" 
