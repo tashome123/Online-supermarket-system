@@ -4,83 +4,82 @@ import com.strathmore.grocery.models.CartItem;
 import com.strathmore.grocery.models.Product;
 import com.strathmore.grocery.models.User;
 import com.strathmore.grocery.repositories.CartItemRepository;
-import com.strathmore.grocery.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@Transactional
 public class CartService {
     
     private final CartItemRepository cartItemRepository;
-    private final ProductRepository productRepository;
+    private final ProductService productService;
     
     @Autowired
-    public CartService(CartItemRepository cartItemRepository, ProductRepository productRepository) {
+    public CartService(CartItemRepository cartItemRepository, ProductService productService) {
         this.cartItemRepository = cartItemRepository;
-        this.productRepository = productRepository;
+        this.productService = productService;
     }
     
     public List<CartItem> getUserCart(User user) {
         return cartItemRepository.findByUser(user);
     }
     
-    public CartItem addToCart(User user, Long productId, Integer quantity) {
-        Optional<Product> productOpt = productRepository.findById(productId);
-        if (!productOpt.isPresent()) {
-            throw new RuntimeException("Product not found");
-        }
-        
-        Product product = productOpt.get();
-        if (product.getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock");
-        }
-        
-        Optional<CartItem> existingItem = cartItemRepository.findByUserAndProductId(user, productId);
-        if (existingItem.isPresent()) {
-            CartItem item = existingItem.get();
-            item.setQuantity(item.getQuantity() + quantity);
-            return cartItemRepository.save(item);
+    public void addToCart(User user, Long productId, Integer quantity) {
+        Product product = productService.getProductById(productId)
+            .orElseThrow(() -> new RuntimeException("Product not found"));
+            
+        CartItem existingItem = cartItemRepository.findByUserAndProduct(user, product)
+            .orElse(null);
+            
+        if (existingItem != null) {
+            existingItem.setQuantity(existingItem.getQuantity() + quantity);
+            cartItemRepository.save(existingItem);
         } else {
             CartItem newItem = new CartItem();
             newItem.setUser(user);
             newItem.setProduct(product);
             newItem.setQuantity(quantity);
             newItem.setUnitPrice(product.getPrice());
-            return cartItemRepository.save(newItem);
+            cartItemRepository.save(newItem);
         }
     }
     
-    public CartItem updateCartItemQuantity(Long cartItemId, Integer quantity) {
-        Optional<CartItem> cartItemOpt = cartItemRepository.findById(cartItemId);
-        if (!cartItemOpt.isPresent()) {
-            throw new RuntimeException("Cart item not found");
-        }
-        
-        CartItem cartItem = cartItemOpt.get();
-        if (cartItem.getProduct().getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock");
-        }
-        
+    public void updateCartItemQuantity(Long cartItemId, Integer quantity) {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+            .orElseThrow(() -> new RuntimeException("Cart item not found"));
         cartItem.setQuantity(quantity);
-        return cartItemRepository.save(cartItem);
+        cartItemRepository.save(cartItem);
     }
-    
+
+    @Transactional
     public void removeFromCart(Long cartItemId) {
-        cartItemRepository.deleteById(cartItemId);
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+
+        // Optional: Add security check to ensure the item belongs to the current user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!cartItem.getUser().getEmail().equals(auth.getName())) {
+            throw new RuntimeException("Unauthorized access to cart item");
+        }
+
+        cartItemRepository.delete(cartItem);
     }
-    
+
+
     public void clearCart(User user) {
-        cartItemRepository.deleteByUser(user);
+        List<CartItem> userItems = cartItemRepository.findByUser(user);
+        cartItemRepository.deleteAll(userItems);
     }
     
     public BigDecimal getCartTotal(User user) {
-        List<CartItem> cartItems = getUserCart(user);
-        return cartItems.stream()
-                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return getUserCart(user).stream()
+            .map(item -> item.getUnitPrice().multiply(new BigDecimal(item.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

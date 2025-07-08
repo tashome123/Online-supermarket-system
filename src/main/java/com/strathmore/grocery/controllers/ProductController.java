@@ -23,7 +23,13 @@ public class ProductController {
     @GetMapping
     public String getAllProducts(Model model) {
         List<Product> products = productService.getAllProducts();
+        System.out.println("Products found: " + products.size());
+        if (!products.isEmpty()) {
+            System.out.println("First product: " + products.get(0).toString());
+        }
+        
         List<String> categories = productService.getAllCategories();
+        System.out.println("Categories found: " + categories);
         
         model.addAttribute("products", products);
         model.addAttribute("categories", categories);
@@ -104,4 +110,4 @@ public class ProductController {
         productService.deleteProduct(id);
         return "redirect:/products/admin";
     }
-} 
+}

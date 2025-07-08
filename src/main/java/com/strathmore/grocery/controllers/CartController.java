@@ -10,6 +10,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Controller
@@ -47,27 +49,27 @@ public class CartController {
     }
 
     @PostMapping("/update/{cartItemId}")
-    @ResponseBody
-    public String updateQuantity(@PathVariable Long cartItemId, 
-                                @RequestParam Integer quantity) {
+    public String updateQuantity(@PathVariable Long cartItemId,
+                                 @RequestParam Integer quantity) {
         try {
             cartService.updateCartItemQuantity(cartItemId, quantity);
-            return "Cart updated successfully!";
+            return "redirect:/cart";
         } catch (RuntimeException e) {
-            return "Error: " + e.getMessage();
+            return "redirect:/cart?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
         }
     }
 
+
     @PostMapping("/remove/{cartItemId}")
-    @ResponseBody
     public String removeFromCart(@PathVariable Long cartItemId) {
         try {
             cartService.removeFromCart(cartItemId);
-            return "Item removed from cart successfully!";
+            return "redirect:/cart";
         } catch (RuntimeException e) {
-            return "Error: " + e.getMessage();
+            return "redirect:/cart?error=true";
         }
     }
+
 
     @PostMapping("/clear")
     @ResponseBody
@@ -79,4 +81,5 @@ public class CartController {
             return "Error: " + e.getMessage();
         }
     }
+
 }
