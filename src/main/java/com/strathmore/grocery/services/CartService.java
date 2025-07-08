@@ -5,6 +5,8 @@ import com.strathmore.grocery.models.Product;
 import com.strathmore.grocery.models.User;
 import com.strathmore.grocery.repositories.CartItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,11 +56,22 @@ public class CartService {
         cartItem.setQuantity(quantity);
         cartItemRepository.save(cartItem);
     }
-    
+
+    @Transactional
     public void removeFromCart(Long cartItemId) {
-        cartItemRepository.deleteById(cartItemId);
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+
+        // Optional: Add security check to ensure the item belongs to the current user
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!cartItem.getUser().getEmail().equals(auth.getName())) {
+            throw new RuntimeException("Unauthorized access to cart item");
+        }
+
+        cartItemRepository.delete(cartItem);
     }
-    
+
+
     public void clearCart(User user) {
         List<CartItem> userItems = cartItemRepository.findByUser(user);
         cartItemRepository.deleteAll(userItems);

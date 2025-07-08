@@ -40,13 +40,13 @@
                                 <tbody>
                                     <tr th:each="item : ${cartItems}">
                                         <td th:text="${item.product.name}">Product</td>
-                                        <td th:text="${item.quantity + ' x $' + #numbers.formatDecimal(item.unitPrice, 1, 2)}">Quantity x Price</td>
+                                        <td th:text="${item.quantity + ' x KSh' + #numbers.formatDecimal(item.unitPrice, 1, 2)}">Quantity x Price</td>
                                     </tr>
                                 </tbody>
                                 <tfoot>
                                     <tr>
                                         <th>Total:</th>
-                                        <th th:text="${'$' + #numbers.formatDecimal(total, 1, 2)}">$0.00</th>
+                                        <th th:text="${'KSh' + #numbers.formatDecimal(total, 1, 2)}">$0.00</th>
                                     </tr>
                                 </tfoot>
                             </table>
